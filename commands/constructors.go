@@ -9,7 +9,6 @@ import (
 	"github.com/certusone/yubihsm-go/authkey"
 )
 
-
 func CreateDeviceInfoCommand() (*CommandMessage, error) {
 	command := &CommandMessage{
 		CommandType: CommandTypeDeviceInfo,
@@ -458,4 +457,24 @@ func CreateImportWrappedCommand(wrapObjID uint16, nonce, data []byte) (*CommandM
 	command.Data = payload.Bytes()
 
 	return command, nil
+}
+
+func CreateGetLogsCommand() *CommandMessage {
+	command := &CommandMessage{
+		CommandType: CommandTypeGetLogs,
+	}
+
+	return command
+}
+
+func CreateSetLogIndexCommand(index uint16) *CommandMessage {
+	command := &CommandMessage{
+		CommandType: CommandTypeSetLogIndex,
+	}
+
+	payload := bytes.NewBuffer([]byte{})
+	_ = binary.Write(payload, binary.BigEndian, index)
+	command.Data = payload.Bytes()
+
+	return command
 }
