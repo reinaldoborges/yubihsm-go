@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/certusone/yubihsm-go/authkey"
+	"github.com/certusone/yubihsm-go/commands"
+	"github.com/certusone/yubihsm-go/connector"
 	"github.com/enceve/crypto/cmac"
-	"github.com/indoff/yubihsm-go/authkey"
-	"github.com/indoff/yubihsm-go/commands"
-	"github.com/indoff/yubihsm-go/connector"
 )
 
 type (

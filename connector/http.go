@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/indoff/yubihsm-go/commands"
+	"github.com/certusone/yubihsm-go/commands"
 )
 
 var ErrInvalidResponseValueLength = errors.New("invalid response value length")
