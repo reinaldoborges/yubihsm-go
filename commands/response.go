@@ -145,6 +145,14 @@ type (
 		SysTick        uint32
 		Digest         []byte
 	}
+
+	EncryptAesCbcResponse struct {
+		Data []byte
+	}
+
+	DecryptAesCbcResponse struct {
+		Data []byte
+	}
 )
 
 // ParseResponse parses the binary response from the card to the relevant Response type.
@@ -225,6 +233,10 @@ func ParseResponse(data []byte) (Response, error) {
 		return parseGetLogsResponse(payload)
 	case CommandTypeSetLogIndex:
 		return nil, nil
+	case CommandTypeDecryptAesCbc:
+		return parseDecryptAesCbcResponse(payload)
+	case CommandTypeEncryptAesCbc:
+		return parseEncryptAesCbcResponse(payload)
 	case ErrorResponseCode:
 		return nil, parseErrorResponse(payload)
 	default:
@@ -604,6 +616,18 @@ func (le LogElement) IsBoot() bool {
 
 func (le LogElement) IsReset() bool {
 	return le.CommandType == LogCommandTypeReset
+}
+
+func parseEncryptAesCbcResponse(payload []byte) (Response, error) {
+	return &EncryptAesCbcResponse{
+		Data: payload,
+	}, nil
+}
+
+func parseDecryptAesCbcResponse(payload []byte) (Response, error) {
+	return &DecryptAesCbcResponse{
+		Data: payload,
+	}, nil
 }
 
 // Error formats a card error message into a human readable format

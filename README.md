@@ -24,6 +24,8 @@ Currently the following commands are implemented:
  * GetPseudoRandom
  * GetLogs
  * SetLogIndex
+ * EncryptAesCbc
+ * DecryptAesCbc
 
 Implementing new commands is really easy. Please consult `commands/constructors.go` and `commands/response.go` for reference.
 

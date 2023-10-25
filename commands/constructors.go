@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"reflect"
 
 	"github.com/certusone/yubihsm-go/authkey"
 )
@@ -477,4 +478,54 @@ func CreateSetLogIndexCommand(index uint16) *CommandMessage {
 	command.Data = payload.Bytes()
 
 	return command
+}
+
+// Returns a valid EncryptAesCbc command for YubiHSM2
+func CreateEncryptAesCbcCommand(symmetricKeyId uint16, initializationVector []byte, data []byte) (command *CommandMessage, err error) {
+	if reflect.TypeOf(symmetricKeyId).Size() != 2 {
+		return nil, errors.New("symmetric key id must be 2 bytes in size")
+	}
+	if len(initializationVector) != 16 {
+		return nil, errors.New("initialization vector must be 16 bytes in size")
+	}
+	if len(data)%16 != 0 {
+		return nil, errors.New("data must be a multiple of 16 bytes")
+	}
+	command = &CommandMessage{
+		CommandType: CommandTypeEncryptAesCbc,
+	}
+
+	payload := bytes.NewBuffer([]byte{})
+	binary.Write(payload, binary.BigEndian, symmetricKeyId)
+	binary.Write(payload, binary.BigEndian, initializationVector)
+	payload.Write(data)
+
+	command.Data = payload.Bytes()
+
+	return command, nil
+}
+
+// Returns a valid DecryptAesCbc command for YubiHSM2
+func CreateDecryptAesCbcCommand(symmetricKeyId uint16, initializationVector []byte, encryptedData []byte) (command *CommandMessage, err error) {
+	if reflect.TypeOf(symmetricKeyId).Size() != 2 {
+		return nil, errors.New("symmetric key id must be 2 bytes in size")
+	}
+	if len(initializationVector) != 16 {
+		return nil, errors.New("initialization vector must be 16 bytes in size")
+	}
+	if len(encryptedData)%16 != 0 {
+		return nil, errors.New("data must be a multiple of 16 bytes")
+	}
+	command = &CommandMessage{
+		CommandType: CommandTypeDecryptAesCbc,
+	}
+
+	payload := bytes.NewBuffer([]byte{})
+	binary.Write(payload, binary.BigEndian, symmetricKeyId)
+	binary.Write(payload, binary.BigEndian, initializationVector)
+	payload.Write(encryptedData)
+
+	command.Data = payload.Bytes()
+
+	return command, nil
 }

@@ -7,12 +7,13 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"sync"
 
-	"github.com/enceve/crypto/cmac"
 	"github.com/certusone/yubihsm-go/authkey"
 	"github.com/certusone/yubihsm-go/commands"
 	"github.com/certusone/yubihsm-go/connector"
+	"github.com/enceve/crypto/cmac"
 )
 
 type (
@@ -241,6 +242,9 @@ func (s *SecureChannel) SendEncryptedCommand(c *commands.CommandMessage) (comman
 		SessionID:   &sessionMessage.SessionID,
 		Data:        sessionMessage.EncryptedData,
 	}, MessageTypeResponse)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate MAC: %w", err)
+	}
 
 	if !bytes.Equal(expectedMac[:MACLength], sessionMessage.MAC) {
 		return nil, errors.New("invalid response MAC")

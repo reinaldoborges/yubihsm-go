@@ -62,6 +62,8 @@ const (
 	CommandTypeSignDataEddsa           CommandType = 0x6a
 	CommandTypeSetBlink                CommandType = 0x6b
 	CommandTypeChangeAuthenticationKey CommandType = 0x6c
+	CommandTypeDecryptAesCbc           CommandType = 0x71
+	CommandTypeEncryptAesCbc           CommandType = 0x72
 
 	// Errors
 	ErrorCodeOK                       ErrorCode = 0x00
@@ -131,6 +133,7 @@ const (
 	AlgorithmECECDSASHA512           Algorithm = 45
 	AlgorithmED25519                 Algorithm = 46
 	AlgorithmECP224                  Algorithm = 47
+	AlgorithmAesCbc                  Algorithm = 54
 
 	// Capabilities
 	CapabilityNone                    uint64 = 0x0000000000000000
