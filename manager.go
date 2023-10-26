@@ -160,3 +160,11 @@ func (s *SessionManager) Destroy() {
 	s.session.Close()
 	s.destroyed = true
 }
+
+// Returns the session ID. Will return 0 as the ID if there is an error.
+func (s *SessionManager) GetSessionID() (uint8, error) {
+	if s.session != nil {
+		return s.session.ID, nil
+	}
+	return 0, errors.New("couldn't retrieve session id: no session is open")
+}
