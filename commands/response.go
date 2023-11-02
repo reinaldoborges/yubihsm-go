@@ -138,7 +138,7 @@ type (
 		CommandNumber  uint16
 		CommandType    CommandType
 		CommandLength  uint16
-		SessionID      uint16
+		SessionKeyID   uint16
 		KeyID          uint16
 		SecondaryKeyID uint16
 		Result         ErrorCode
@@ -552,7 +552,7 @@ func parseGetLogsResponse(payload []byte) (Response, error) {
 			commandNumber  uint16
 			commandType    CommandType
 			commandLength  uint16
-			sessionID      uint16
+			sessionKeyID   uint16
 			keyID          uint16
 			secondaryKeyID uint16
 			result         ErrorCode
@@ -569,7 +569,7 @@ func parseGetLogsResponse(payload []byte) (Response, error) {
 		if err := binary.Read(r, binary.BigEndian, &commandLength); err != nil {
 			return nil, err
 		}
-		if err := binary.Read(r, binary.BigEndian, &sessionID); err != nil {
+		if err := binary.Read(r, binary.BigEndian, &sessionKeyID); err != nil {
 			return nil, err
 		}
 		if err := binary.Read(r, binary.BigEndian, &keyID); err != nil {
@@ -594,7 +594,7 @@ func parseGetLogsResponse(payload []byte) (Response, error) {
 			CommandNumber:  commandNumber,
 			CommandType:    commandType,
 			CommandLength:  commandLength,
-			SessionID:      sessionID,
+			SessionKeyID:   sessionKeyID,
 			KeyID:          keyID,
 			SecondaryKeyID: secondaryKeyID,
 			Result:         result,
