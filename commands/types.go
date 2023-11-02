@@ -1,6 +1,7 @@
 package commands
 
 type (
+	//go:generate stringer -type CommandType -trimprefix CommandType
 	CommandType uint8
 	ErrorCode   uint8
 	Algorithm   uint8
