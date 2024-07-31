@@ -108,7 +108,11 @@ func (s *SessionManager) swapSession() error {
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	log.Printf("Swapping session %d: Locked session.\n", s.session.ID)
+	if s.session != nil {
+		log.Printf("Swapping session %d: Locked session.\n", s.session.ID)
+	} else {
+		log.Printf("Swapping session: Brand new session. Locked session.")
+	}
 	// Close old session (must be unlocked first)
 	if s.session != nil {
 		log.Printf("Swapping session %d: Closing old session.\n", s.session.ID)
