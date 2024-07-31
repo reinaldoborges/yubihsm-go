@@ -52,13 +52,14 @@ func NewSessionManager(connector connector.Connector, authKeyID uint16, password
 	}
 
 	manager.keepAlive = time.NewTimer(pingInterval)
-	go manager.pingRoutine()
+	go manager.pingRoutine() // TODO: error check
 
 	return manager, err
 }
 
 func (s *SessionManager) pingRoutine() {
 	for range s.keepAlive.C {
+		log.Printf("Keepalive timer tripped for session %d. Sending echo command.\n", s.session.ID)
 		command, _ := commands.CreateEchoCommand(echoPayload)
 
 		resp, err := s.SendEncryptedCommand(command)
@@ -72,6 +73,7 @@ func (s *SessionManager) pingRoutine() {
 			}
 		} else {
 			// Session seems to be dead - reconnect and swap
+			log.Printf("Keepalive: session %d seems to be dead. Swapping...\n", s.session.ID)
 			err = s.swapSession()
 			if err != nil {
 				log.Printf("swapping dead session failed; err=%v", err)
@@ -83,25 +85,34 @@ func (s *SessionManager) pingRoutine() {
 }
 
 func (s *SessionManager) swapSession() error {
+	if s.session != nil {
+		log.Printf("Swapping session %d...\n", s.session.ID)
+	} else {
+		log.Println("Swapping session: No ID, brand new session.")
+	}
 	// Lock swapping process
 	s.swapping = true
 	defer func() { s.swapping = false }()
 
 	newSession, err := securechannel.NewSecureChannel(s.connector, s.authKeyID, s.password)
 	if err != nil {
+		log.Printf("Failed to swap session: %s\n", err.Error())
 		return err
 	}
 
 	err = newSession.Authenticate()
 	if err != nil {
+		log.Printf("Failed to swap session: %s\n", err.Error())
 		return err
 	}
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	// Close old session
+	log.Printf("Swapping session %d: Locked session.\n", s.session.ID)
+	// Close old session (must be unlocked first)
 	if s.session != nil {
-		go s.session.Close()
+		log.Printf("Swapping session %d: Closing old session.\n", s.session.ID)
+		go s.session.Close() // TODO: error check
 	}
 
 	// Replace primary session
@@ -111,8 +122,10 @@ func (s *SessionManager) swapSession() error {
 }
 
 func (s *SessionManager) checkSessionHealth() {
+	log.Printf("Health check: Session %d: %d / %d messages used.\n", s.session.ID, s.session.Counter, securechannel.MaxMessagesPerSession)
 	if s.session.Counter >= securechannel.MaxMessagesPerSession*0.9 && !s.swapping {
-		go s.swapSession()
+		log.Printf("Health check: Session %d: %d / %d messages used. SWAPPING!\n", s.session.ID, s.session.Counter, securechannel.MaxMessagesPerSession)
+		go s.swapSession() // TODO: error check
 	}
 }
 

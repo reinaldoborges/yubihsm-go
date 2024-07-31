@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/enceve/crypto/cmac"
@@ -91,6 +92,7 @@ var ErrAuthCryptogram = errors.New("authentication failed: device sent wrong cry
 // NewSecureChannel initiates a new secure channel to communicate with an HSM using the given authKey
 // Call Authenticate next to establish a session.
 func NewSecureChannel(connector connector.Connector, authKeySlot uint16, password string) (*SecureChannel, error) {
+	log.Println("Opening new secure channel...")
 	channel := &SecureChannel{
 		ID:            0,
 		AuthKey:       authkey.NewFromPassword(password),
@@ -103,9 +105,11 @@ func NewSecureChannel(connector connector.Connector, authKeySlot uint16, passwor
 	hostChallenge := make([]byte, 8)
 	_, err := rand.Read(hostChallenge)
 	if err != nil {
+		log.Printf("Failed to open new secure channel: %s\n", err.Error())
 		return nil, err
 	}
 	channel.HostChallenge = hostChallenge
+	log.Println("Opened new secure channel")
 
 	return channel, nil
 }
@@ -118,15 +122,19 @@ func (s *SecureChannel) Authenticate() error {
 
 	s.channelLock.Lock()
 	defer s.channelLock.Unlock()
+	log.Println("Authenticating new session: Secure channel locked.")
 
 	command, _ := commands.CreateCreateSessionCommand(s.authKeySlot, s.HostChallenge)
 	response, err := s.SendCommand(command)
 	if err != nil {
+		log.Printf("Failed to authenticate new session. Failed to send create session command: %s\n", err.Error())
 		return err
 	}
+	log.Println("Authenticating new session: Successfully sent create session command. Preparing response...")
 
 	createSessionResp, match := response.(*commands.CreateSessionResponse)
 	if !match {
+		log.Println("Failed to authenticate new session. Invalid response type.")
 		return errors.New("invalid response type")
 	}
 
@@ -136,32 +144,38 @@ func (s *SecureChannel) Authenticate() error {
 	// Update keychain
 	err = s.updateKeychain()
 	if err != nil {
+		log.Printf("Failed to authenticate new session. Failed to update keychain: %s\n", err.Error())
 		return err
 	}
 
 	// Validate device cryptogram
 	deviceCryptogram, err := s.deriveKDF(s.keyChain.MACKey, DerivationConstantDeviceCryptogram, CryptogramLength)
 	if err != nil {
+		log.Printf("Failed to authenticate new session. Failed to validate device cryptogram: %s\n", err.Error())
 		return err
 	}
 
 	if !bytes.Equal(deviceCryptogram, createSessionResp.CardCryptogram) {
+		log.Printf("Failed to authenticate new session. Failed to validate device cryptogram: %s\n", ErrAuthCryptogram.Error())
 		return ErrAuthCryptogram
 	}
 
 	// Create host cryptogram
 	hostCryptogram, err := s.deriveKDF(s.keyChain.MACKey, DerivationConstantHostCryptogram, CryptogramLength)
 	if err != nil {
+		log.Printf("Failed to authenticate new session. Failed to create host cryptogram: %s\n", err.Error())
 		return err
 	}
 
 	// Authenticate session
 	authenticateCommand, err := commands.CreateAuthenticateSessionCommand(hostCryptogram)
 	if err != nil {
+		log.Printf("Failed to authenticate new session. Failed to create authenticate session command: %s\n", err.Error())
 		return err
 	}
 	_, err = s.sendMACCommand(authenticateCommand)
 	if err != nil {
+		log.Printf("Failed to authenticate new session. Failed to send authenticate command: %s\n", err.Error())
 		return err
 	}
 
@@ -169,6 +183,8 @@ func (s *SecureChannel) Authenticate() error {
 	s.Counter = 1
 
 	s.SecurityLevel = SecurityLevelAuthenticated
+
+	log.Println("New session authentication complete.")
 
 	return nil
 }
@@ -265,6 +281,8 @@ func (s *SecureChannel) SendEncryptedCommand(c *commands.CommandMessage) (comman
 }
 
 func (s *SecureChannel) Close() error {
+	log.Printf("Closing session %d...\n", s.ID)
+	originalId := s.ID
 	command, err := commands.CreateCloseSessionCommand()
 	if err != nil {
 		return err
@@ -274,6 +292,7 @@ func (s *SecureChannel) Close() error {
 	if err != nil {
 		return err
 	}
+	log.Printf("Closed session %d\n", originalId)
 
 	return nil
 }
