@@ -3,6 +3,7 @@ package yubihsm
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -25,6 +26,8 @@ type (
 		destroyed    bool
 		keepAlive    *time.Timer
 		swapping     bool
+
+		logLevel int // Level of logs to print
 	}
 )
 
@@ -34,16 +37,24 @@ var (
 
 const (
 	pingInterval = 15 * time.Second
+
+	LogLevel_None  = 0
+	LogLevel_Error = 1
+	LogLevel_Warn  = 2
+	LogLevel_Info  = 3
+	LogLevel_Debug = 4
+	LogLevel_Trace = 5
 )
 
 // NewSessionManager creates a new instance of the SessionManager with poolSize connections.
 // Wait on channel Connected with a timeout to wait for active connections to be ready.
-func NewSessionManager(connector connector.Connector, authKeyID uint16, password string) (*SessionManager, error) {
+func NewSessionManager(connector connector.Connector, authKeyID uint16, password string, logLevel int) (*SessionManager, error) {
 	manager := &SessionManager{
 		connector: connector,
 		authKeyID: authKeyID,
 		password:  password,
 		destroyed: false,
+		logLevel:  logLevel,
 	}
 
 	err := manager.swapSession()
@@ -52,7 +63,7 @@ func NewSessionManager(connector connector.Connector, authKeyID uint16, password
 	}
 
 	manager.keepAlive = time.NewTimer(pingInterval)
-	go manager.pingRoutine() // TODO: error check
+	go manager.pingRoutine()
 
 	return manager, err
 }
@@ -86,37 +97,50 @@ func (s *SessionManager) pingRoutine() {
 
 func (s *SessionManager) swapSession() error {
 	if s.session != nil {
-		log.Printf("Swapping session %d...\n", s.session.ID)
+		s.logDebugMsg(fmt.Sprintf("Swapping session %d...\n", s.session.ID))
 	} else {
-		log.Println("Swapping session: No ID, brand new session.")
+		s.logDebugMsg("Swapping session: No ID, brand new session.")
 	}
 	// Lock swapping process
 	s.swapping = true
 	defer func() { s.swapping = false }()
 
+	s.logDebugMsg("Opening new secure channel...")
 	newSession, err := securechannel.NewSecureChannel(s.connector, s.authKeyID, s.password)
 	if err != nil {
-		log.Printf("Failed to swap session: %s\n", err.Error())
+		s.logErrorMsg(fmt.Sprintf("Failed to open new secure channel: %s\n", err.Error()))
 		return err
 	}
+	s.logDebugMsg("Successfully opened new secure channel.")
 
+	s.logDebugMsg("Authenticating new session...")
 	err = newSession.Authenticate()
 	if err != nil {
-		log.Printf("Failed to swap session: %s\n", err.Error())
+		s.logErrorMsg(fmt.Sprintf("Failed to authenticate new session: %s\n", err.Error()))
 		return err
 	}
+	s.logDebugMsg("Successfully authenticated new session.")
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if s.session != nil {
-		log.Printf("Swapping session %d: Locked session.\n", s.session.ID)
+		s.logDebugMsg(fmt.Sprintf("Swapping session %d: Locked session.\n", s.session.ID))
 	} else {
-		log.Printf("Swapping session: Brand new session. Locked session.")
+		s.logDebugMsg("Swapping session: Brand new session. Locked session.")
 	}
+
 	// Close old session (must be unlocked first)
 	if s.session != nil {
-		log.Printf("Swapping session %d: Closing old session.\n", s.session.ID)
-		go s.session.Close() // TODO: error check
+		s.logDebugMsg(fmt.Sprintf("Swapping session %d: Closing old session.\n", s.session.ID))
+		go func() {
+			originalId := s.session.ID
+			s.logDebugMsg(fmt.Sprintf("Closing session %d...\n", s.session.ID))
+			err := s.session.Close()
+			if err != nil {
+				s.logErrorMsg(fmt.Sprintf("ERROR failed to close session: %s\n", err.Error()))
+			}
+			s.logDebugMsg(fmt.Sprintf("Closed session %d\n", originalId))
+		}()
 	}
 
 	// Replace primary session
@@ -126,10 +150,42 @@ func (s *SessionManager) swapSession() error {
 }
 
 func (s *SessionManager) checkSessionHealth() {
-	log.Printf("Health check: Session %d: %d / %d messages used.\n", s.session.ID, s.session.Counter, securechannel.MaxMessagesPerSession)
+	s.logTraceMsg(fmt.Sprintf("Health check: Session %d: %d / %d messages used.\n", s.session.ID, s.session.Counter, securechannel.MaxMessagesPerSession))
 	if s.session.Counter >= securechannel.MaxMessagesPerSession*0.9 && !s.swapping {
-		log.Printf("Health check: Session %d: %d / %d messages used. SWAPPING!\n", s.session.ID, s.session.Counter, securechannel.MaxMessagesPerSession)
-		go s.swapSession() // TODO: error check
+		s.logDebugMsg(fmt.Sprintf("Health check: Session %d: %d / %d messages used. SWAPPING!\n", s.session.ID, s.session.Counter, securechannel.MaxMessagesPerSession))
+		go func() {
+			err := s.swapSession()
+			if err != nil {
+				s.logErrorMsg(fmt.Sprintf("failed to swap session: %s\n", err.Error()))
+			}
+		}()
+	}
+}
+
+// Logs a message at error level.
+//
+// msg : The message to log.
+func (s *SessionManager) logErrorMsg(msg string) {
+	if s.logLevel >= LogLevel_Error {
+		log.Print("ERROR " + msg)
+	}
+}
+
+// Logs a message at debug level.
+//
+// msg : The message to log.
+func (s *SessionManager) logDebugMsg(msg string) {
+	if s.logLevel >= LogLevel_Debug {
+		log.Print("DEBUG " + msg)
+	}
+}
+
+// Logs a message at trace level.
+//
+// msg : The message to log.
+func (s *SessionManager) logTraceMsg(msg string) {
+	if s.logLevel >= LogLevel_Trace {
+		log.Print("TRACE " + msg)
 	}
 }
 
