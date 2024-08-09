@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/indoff/yubihsm-go/commands"
@@ -25,7 +26,7 @@ type (
 		creationWait sync.WaitGroup
 		destroyed    bool
 		keepAlive    *time.Timer
-		swapping     bool
+		swapping     atomic.Bool
 
 		logLevel int // Level of logs to print
 	}
@@ -70,7 +71,7 @@ func NewSessionManager(connector connector.Connector, authKeyID uint16, password
 
 func (s *SessionManager) pingRoutine() {
 	for range s.keepAlive.C {
-		log.Printf("Keepalive timer tripped for session %d. Sending echo command.\n", s.session.ID)
+		s.logTraceMsg(fmt.Sprintf("Keepalive timer tripped for session %d. Sending echo command.\n", s.session.ID))
 		command, _ := commands.CreateEchoCommand(echoPayload)
 
 		resp, err := s.SendEncryptedCommand(command)
@@ -78,16 +79,18 @@ func (s *SessionManager) pingRoutine() {
 			parsedResp, matched := resp.(*commands.EchoResponse)
 			if !matched {
 				err = errors.New("invalid response type")
+				s.logErrorMsg(fmt.Sprintf("keepalive echo failed: %s", err.Error()))
 			}
 			if !bytes.Equal(parsedResp.Data, echoPayload) {
 				err = errors.New("echoed data is invalid")
+				s.logErrorMsg(fmt.Sprintf("keepalive echo failed: %s", err.Error()))
 			}
 		} else {
 			// Session seems to be dead - reconnect and swap
-			log.Printf("Keepalive: session %d seems to be dead. Swapping...\n", s.session.ID)
+			s.logDebugMsg(fmt.Sprintf("Keepalive: session %d seems to be dead. Attempting to swap...\n", s.session.ID))
 			err = s.swapSession()
 			if err != nil {
-				log.Printf("swapping dead session failed; err=%v", err)
+				s.logErrorMsg(fmt.Sprintf("swapping dead session failed; err=%v", err))
 			}
 		}
 
@@ -102,8 +105,12 @@ func (s *SessionManager) swapSession() error {
 		s.logDebugMsg("Swapping session: No ID, brand new session.")
 	}
 	// Lock swapping process
-	s.swapping = true
-	defer func() { s.swapping = false }()
+	isAlreadySwapping := s.swapping.CompareAndSwap(false, true)
+	if isAlreadySwapping {
+		return errors.New("session already swapping")
+	}
+	defer func() { s.swapping.Store(false) }()
+	s.logDebugMsg("Session locked. Now swapping...")
 
 	s.logDebugMsg("Opening new secure channel...")
 	newSession, err := securechannel.NewSecureChannel(s.connector, s.authKeyID, s.password)
@@ -151,7 +158,7 @@ func (s *SessionManager) swapSession() error {
 
 func (s *SessionManager) checkSessionHealth() {
 	s.logTraceMsg(fmt.Sprintf("Health check: Session %d: %d / %d messages used.\n", s.session.ID, s.session.Counter, securechannel.MaxMessagesPerSession))
-	if s.session.Counter >= securechannel.MaxMessagesPerSession*0.9 && !s.swapping {
+	if s.session.Counter >= securechannel.MaxMessagesPerSession*0.9 && !s.swapping.Load() {
 		s.logDebugMsg(fmt.Sprintf("Health check: Session %d: %d / %d messages used. SWAPPING!\n", s.session.ID, s.session.Counter, securechannel.MaxMessagesPerSession))
 		go func() {
 			err := s.swapSession()
