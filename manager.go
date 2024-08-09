@@ -57,6 +57,7 @@ func NewSessionManager(connector connector.Connector, authKeyID uint16, password
 		destroyed: false,
 		logLevel:  logLevel,
 	}
+	manager.swapping.Store(false) // false is the zero value, but let's set it explicitly
 
 	err := manager.swapSession()
 	if err != nil {
@@ -106,7 +107,7 @@ func (s *SessionManager) swapSession() error {
 	}
 	// Lock swapping process
 	isAlreadySwapping := s.swapping.CompareAndSwap(false, true)
-	if isAlreadySwapping {
+	if !isAlreadySwapping {
 		return errors.New("session already swapping")
 	}
 	defer func() { s.swapping.Store(false) }()
