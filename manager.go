@@ -143,10 +143,10 @@ func (s *SessionManager) swapSession() error {
 		originalSession := s.session
 		go func() {
 			originalId := originalSession.ID
-			s.logDebugMsg(fmt.Sprintf("Closing session %d...\n", s.session.ID))
+			s.logDebugMsg(fmt.Sprintf("Closing session %d...\n", originalId))
 			err := originalSession.Close()
 			if err != nil {
-				s.logErrorMsg(fmt.Sprintf("ERROR failed to close session: %s\n", err.Error()))
+				s.logErrorMsg(fmt.Sprintf("failed to close session: %s\n", err.Error()))
 			}
 			s.logDebugMsg(fmt.Sprintf("Closed session %d\n", originalId))
 		}()
