@@ -101,9 +101,9 @@ func (s *SessionManager) pingRoutine() {
 
 func (s *SessionManager) swapSession() error {
 	if s.session != nil {
-		s.logDebugMsg(fmt.Sprintf("Swapping session %d...\n", s.session.ID))
+		s.logDebugMsg(fmt.Sprintf("Trying to swap session (id = %d)...\n", s.session.ID))
 	} else {
-		s.logDebugMsg("Swapping session: No ID, brand new session.")
+		s.logDebugMsg("Trying to swap session: No ID, brand new session.")
 	}
 	// Lock swapping process
 	isAlreadySwapping := s.swapping.CompareAndSwap(false, true)
@@ -111,7 +111,7 @@ func (s *SessionManager) swapSession() error {
 		return errors.New("session already swapping")
 	}
 	defer func() { s.swapping.Store(false) }()
-	s.logDebugMsg("Session locked. Now swapping...")
+	s.logInfoMsg("Session locked. Now swapping...")
 
 	s.logDebugMsg("Opening new secure channel...")
 	newSession, err := securechannel.NewSecureChannel(s.connector, s.authKeyID, s.password)
@@ -140,10 +140,11 @@ func (s *SessionManager) swapSession() error {
 	// Close old session (must be unlocked first)
 	if s.session != nil {
 		s.logDebugMsg(fmt.Sprintf("Swapping session %d: Closing old session.\n", s.session.ID))
+		originalSession := s.session
 		go func() {
-			originalId := s.session.ID
+			originalId := originalSession.ID
 			s.logDebugMsg(fmt.Sprintf("Closing session %d...\n", s.session.ID))
-			err := s.session.Close()
+			err := originalSession.Close()
 			if err != nil {
 				s.logErrorMsg(fmt.Sprintf("ERROR failed to close session: %s\n", err.Error()))
 			}
@@ -153,6 +154,8 @@ func (s *SessionManager) swapSession() error {
 
 	// Replace primary session
 	s.session = newSession
+	s.logInfoMsg(fmt.Sprintf("Completed swap to new session. New Session ID = %d\n", s.session.ID))
+	s.logDebugMsg("Session unlocked.")
 
 	return nil
 }
@@ -176,6 +179,15 @@ func (s *SessionManager) checkSessionHealth() {
 func (s *SessionManager) logErrorMsg(msg string) {
 	if s.logLevel >= LogLevel_Error {
 		log.Print("ERROR " + msg)
+	}
+}
+
+// Logs a message at info level.
+//
+// msg : The message to log.
+func (s *SessionManager) logInfoMsg(msg string) {
+	if s.logLevel >= LogLevel_Info {
+		log.Print("INFO " + msg)
 	}
 }
 
