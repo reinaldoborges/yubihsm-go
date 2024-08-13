@@ -88,7 +88,8 @@ func (s *SessionManager) pingRoutine() {
 			}
 		} else {
 			// Session seems to be dead - reconnect and swap
-			s.logDebugMsg(fmt.Sprintf("Keepalive: session %d seems to be dead. Attempting to swap...\n", s.session.ID))
+			s.logDebugMsg(fmt.Sprintf("Keepalive: Got error when sending command: %s", err.Error()))
+			s.logInfoMsg(fmt.Sprintf("Keepalive: session %d seems to be dead. Attempting to swap...\n", s.session.ID))
 			err = s.swapSession()
 			if err != nil {
 				s.logErrorMsg(fmt.Sprintf("swapping dead session failed; err=%v", err))
@@ -100,17 +101,21 @@ func (s *SessionManager) pingRoutine() {
 }
 
 func (s *SessionManager) swapSession() error {
+	sessionId := "No ID Yet. Brand New Session."
 	if s.session != nil {
-		s.logDebugMsg(fmt.Sprintf("Trying to swap session (id = %d)...\n", s.session.ID))
-	} else {
-		s.logDebugMsg("Trying to swap session: No ID, brand new session.")
+		sessionId = fmt.Sprintf("%d", s.session.ID)
 	}
+	s.logDebugMsg(fmt.Sprintf("Trying to swap session (id = %s)...\n", sessionId))
+
 	// Lock swapping process
-	isAlreadySwapping := s.swapping.CompareAndSwap(false, true)
-	if !isAlreadySwapping {
-		return errors.New("session already swapping")
+	unlocked := s.swapping.CompareAndSwap(false, true)
+	if !unlocked {
+		return errors.New("failed to start swap: session locked: already swapping")
 	}
-	defer func() { s.swapping.Store(false) }()
+	defer func() {
+		s.swapping.Store(false)
+		s.logInfoMsg("Session unlocked.")
+	}()
 	s.logInfoMsg("Session locked. Now swapping...")
 
 	s.logDebugMsg("Opening new secure channel...")
@@ -146,7 +151,9 @@ func (s *SessionManager) swapSession() error {
 			s.logDebugMsg(fmt.Sprintf("Closing session %d...\n", originalId))
 			err := originalSession.Close()
 			if err != nil {
-				s.logErrorMsg(fmt.Sprintf("failed to close session: %s\n", err.Error()))
+				// Not a big deal if this fails; they close after 30 seconds of inactivity anyway.
+				// But if it is failing to close the session, this could indicate other problems.
+				s.logWarnMsg(fmt.Sprintf("failed to close session: %s\n", err.Error()))
 			}
 			s.logDebugMsg(fmt.Sprintf("Closed session %d\n", originalId))
 		}()
@@ -155,7 +162,6 @@ func (s *SessionManager) swapSession() error {
 	// Replace primary session
 	s.session = newSession
 	s.logInfoMsg(fmt.Sprintf("Completed swap to new session. New Session ID = %d\n", s.session.ID))
-	s.logDebugMsg("Session unlocked.")
 
 	return nil
 }
@@ -179,6 +185,15 @@ func (s *SessionManager) checkSessionHealth() {
 func (s *SessionManager) logErrorMsg(msg string) {
 	if s.logLevel >= LogLevel_Error {
 		log.Print("ERROR " + msg)
+	}
+}
+
+// Logs a message at warning level.
+//
+// msg : The message to log.
+func (s *SessionManager) logWarnMsg(msg string) {
+	if s.logLevel >= LogLevel_Warn {
+		log.Print("WARN " + msg)
 	}
 }
 
