@@ -88,11 +88,14 @@ func (s *SessionManager) pingRoutine() {
 			}
 		} else {
 			// Session seems to be dead - reconnect and swap
-			s.logDebugMsg(fmt.Sprintf("Keepalive: Got error when sending command: %s", err.Error()))
+			s.logErrorMsg(fmt.Sprintf("Keepalive: Got error when sending command: %s", err.Error()))
 			s.logInfoMsg(fmt.Sprintf("Keepalive: session %d seems to be dead. Attempting to swap...\n", s.session.ID))
+			originalId := s.session.ID
 			err = s.swapSession()
 			if err != nil {
-				s.logErrorMsg(fmt.Sprintf("swapping dead session failed; err=%v", err))
+				s.logErrorMsg(fmt.Sprintf("swapping dead session failed: %s", err.Error()))
+			} else {
+				s.logInfoMsg(fmt.Sprintf("Keepalive: Successfully swapped session %d to session %d.", originalId, s.session.ID))
 			}
 		}
 
@@ -129,33 +132,28 @@ func (s *SessionManager) swapSession() error {
 	s.logDebugMsg("Authenticating new session...")
 	err = newSession.Authenticate()
 	if err != nil {
-		s.logErrorMsg(fmt.Sprintf("Failed to authenticate new session: %s\n", err.Error()))
-		return err
+		return fmt.Errorf("failed to authenticate new session: %w", err)
 	}
 	s.logDebugMsg("Successfully authenticated new session.")
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	if s.session != nil {
-		s.logDebugMsg(fmt.Sprintf("Swapping session %d: Locked session.\n", s.session.ID))
-	} else {
-		s.logDebugMsg("Swapping session: Brand new session. Locked session.")
-	}
+	s.logDebugMsg(fmt.Sprintf("Swapping session %d: Locked session.\n", sessionId))
 
 	// Close old session (must be unlocked first)
 	if s.session != nil {
 		s.logDebugMsg(fmt.Sprintf("Swapping session %d: Closing old session.\n", s.session.ID))
 		originalSession := s.session
 		go func() {
-			originalId := originalSession.ID
-			s.logDebugMsg(fmt.Sprintf("Closing session %d...\n", originalId))
+			s.logDebugMsg(fmt.Sprintf("Started closing session %d...\n", originalSession.ID))
 			err := originalSession.Close()
 			if err != nil {
 				// Not a big deal if this fails; they close after 30 seconds of inactivity anyway.
 				// But if it is failing to close the session, this could indicate other problems.
-				s.logWarnMsg(fmt.Sprintf("failed to close session: %s\n", err.Error()))
+				s.logWarnMsg(fmt.Sprintf("failed to close session %d: %s\n", originalSession.ID, err.Error()))
+			} else {
+				s.logDebugMsg(fmt.Sprintf("Closed session %d\n", originalSession.ID))
 			}
-			s.logDebugMsg(fmt.Sprintf("Closed session %d\n", originalId))
 		}()
 	}
 
