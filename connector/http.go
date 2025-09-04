@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/indoff/yubihsm-go/commands"
+	"github.com/reinaldoborges/yubihsm-go/commands"
 )
 
 var ErrInvalidResponseValueLength = errors.New("invalid response value length")
@@ -80,7 +80,7 @@ func (c *HTTPConnector) GetStatus() (status *StatusResponse, err error) {
 		values = append(values, strings.Split(pair, "=")...)
 	}
 
-	if values == nil || len(values) < 12 {
+	if len(values) < 12 {
 		return nil, ErrInvalidResponseValueLength
 	}
 

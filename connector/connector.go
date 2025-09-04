@@ -1,6 +1,6 @@
 package connector
 
-import "github.com/indoff/yubihsm-go/commands"
+import "github.com/reinaldoborges/yubihsm-go/commands"
 
 type (
 	// Connector implements a simple request interface with a YubiHSM2

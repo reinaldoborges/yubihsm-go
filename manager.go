@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/indoff/yubihsm-go/commands"
-	"github.com/indoff/yubihsm-go/connector"
-	"github.com/indoff/yubihsm-go/securechannel"
+	"github.com/reinaldoborges/yubihsm-go/commands"
+	"github.com/reinaldoborges/yubihsm-go/connector"
+	"github.com/reinaldoborges/yubihsm-go/securechannel"
 )
 
 type (
@@ -138,7 +138,7 @@ func (s *SessionManager) swapSession() error {
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.logDebugMsg(fmt.Sprintf("Swapping session %d: Locked session.\n", sessionId))
+	s.logDebugMsg(fmt.Sprintf("Swapping session %s Locked session.\n", sessionId))
 
 	// Close old session (must be unlocked first)
 	if s.session != nil {

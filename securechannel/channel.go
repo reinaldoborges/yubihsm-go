@@ -11,9 +11,9 @@ import (
 	"sync"
 
 	"github.com/enceve/crypto/cmac"
-	"github.com/indoff/yubihsm-go/authkey"
-	"github.com/indoff/yubihsm-go/commands"
-	"github.com/indoff/yubihsm-go/connector"
+	"github.com/reinaldoborges/yubihsm-go/authkey"
+	"github.com/reinaldoborges/yubihsm-go/commands"
+	"github.com/reinaldoborges/yubihsm-go/connector"
 )
 
 type (

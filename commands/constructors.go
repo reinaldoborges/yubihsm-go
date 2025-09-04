@@ -7,7 +7,7 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/indoff/yubihsm-go/authkey"
+	"github.com/reinaldoborges/yubihsm-go/authkey"
 )
 
 func CreateDeviceInfoCommand() (*CommandMessage, error) {
