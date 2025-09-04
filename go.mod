@@ -1,4 +1,4 @@
-module github.com/indoff/yubihsm-go
+module github.com/reinaldoborges/yubihsm-go
 
 go 1.19
 
