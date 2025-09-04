@@ -3,7 +3,7 @@ package authkey
 import (
 	"crypto/sha256"
 
-	"golang.org/x/crypto/pbkdf2"
+	"crypto/pbkdf2"
 )
 
 type (
@@ -19,7 +19,8 @@ const (
 
 // NewFromPassword derives an AuthKey using pkdf2 as specified in the HSM documentation
 func NewFromPassword(password string) AuthKey {
-	return pbkdf2.Key([]byte(password), []byte(yubicoSeed), authKeyIterations, authKeyLength, sha256.New)
+	key, _ := pbkdf2.Key(sha256.New, password, []byte(yubicoSeed), authKeyIterations, authKeyLength)
+	return AuthKey(key)
 }
 
 // GetEncKey returns the EncryptionKey part of the AuthKey

@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/enceve/crypto/cmac"
+	"github.com/aead/cmac"
 	"github.com/reinaldoborges/yubihsm-go/authkey"
 	"github.com/reinaldoborges/yubihsm-go/commands"
 	"github.com/reinaldoborges/yubihsm-go/connector"
