@@ -1,6 +1,6 @@
 module github.com/reinaldoborges/yubihsm-go
 
-go 1.19
+go 1.25.0
 
 require (
 	github.com/enceve/crypto v0.0.0-20160707101852-34d48bb93815
