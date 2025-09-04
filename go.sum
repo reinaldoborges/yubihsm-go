@@ -1,2 +1,2 @@
-github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1 h1:+JkXLHME8vLJafGhOH4aoV2Iu8bR55nU6iKMVfYVLjY=
-github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1/go.mod h1:nuudZmJhzWtx2212z+pkuy7B6nkBqa+xwNXZHL1j8cg=
+github.com/reinaldoborges/cmac v0.0.0-20250904213048-591cd8546fab h1:++avrACAHWidg0xfZZ+8aSLWAqqepcsrbeIfcj3OGx8=
+github.com/reinaldoborges/cmac v0.0.0-20250904213048-591cd8546fab/go.mod h1:HMclnYPTvMa4A7WPUedHvZiZA+zx+U8b3tKvQkihTp8=
