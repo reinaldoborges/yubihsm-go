@@ -239,6 +239,8 @@ func ParseResponse(data []byte) (Response, error) {
 		return parseEncryptAesCbcResponse(payload)
 	case ErrorResponseCode:
 		return nil, parseErrorResponse(payload)
+	case CommandTypePutOption:
+		return nil, nil
 	default:
 		return nil, errors.New("response type unknown / not implemented")
 	}

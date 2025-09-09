@@ -529,3 +529,32 @@ func CreateDecryptAesCbcCommand(symmetricKeyId uint16, initializationVector []by
 
 	return command, nil
 }
+
+func CreateSetOptionCommand(option string, data []byte) (*CommandMessage, error) {
+	command := &CommandMessage{
+		CommandType: CommandTypePutOption,
+	}
+
+	var optionHex []byte
+	switch option {
+	case "force-audit":
+		optionHex = []byte{0x01}
+	case "command-audit":
+		optionHex = []byte{0x03}
+	case "algorithm-toggle":
+		optionHex = []byte{0x04}
+	case "fips-mode":
+		optionHex = []byte{0x05}
+	default:
+		return nil, errors.New("unknown option")
+	}
+
+	var dataSize uint16 = uint16(len(data))
+	payload := bytes.NewBuffer([]byte{})
+	binary.Write(payload, binary.BigEndian, optionHex) // TAG: 1 byte
+	binary.Write(payload, binary.BigEndian, dataSize)  // Size: 2 bytes
+	binary.Write(payload, binary.BigEndian, data)      // Data
+	command.Data = payload.Bytes()
+
+	return command, nil
+}
