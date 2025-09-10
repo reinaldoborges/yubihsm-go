@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/reinaldoborges/yubihsm-go/authkey"
 	"github.com/reinaldoborges/yubihsm-go/commands"
 	"github.com/reinaldoborges/yubihsm-go/connector"
 	"github.com/reinaldoborges/yubihsm-go/securechannel"
@@ -21,12 +22,12 @@ type (
 		lock      sync.Mutex
 		connector connector.Connector
 		authKeyID uint16
-		password  string
+		authKey   authkey.AuthKey
 
-		creationWait sync.WaitGroup
-		destroyed    bool
-		keepAlive    *time.Timer
-		swapping     atomic.Bool
+		//creationWait sync.WaitGroup
+		destroyed bool
+		keepAlive *time.Timer
+		swapping  atomic.Bool
 
 		logLevel int // Level of logs to print
 	}
@@ -53,9 +54,30 @@ func NewSessionManager(connector connector.Connector, authKeyID uint16, password
 	manager := &SessionManager{
 		connector: connector,
 		authKeyID: authKeyID,
-		password:  password,
 		destroyed: false,
 		logLevel:  logLevel,
+		authKey:   authkey.NewFromPassword(password),
+	}
+	manager.swapping.Store(false) // false is the zero value, but let's set it explicitly
+
+	err := manager.swapSession()
+	if err != nil {
+		return nil, err
+	}
+
+	manager.keepAlive = time.NewTimer(pingInterval)
+	go manager.pingRoutine()
+
+	return manager, err
+}
+
+func NewSessionManagerWithAuthKey(connector connector.Connector, authKeyID uint16, authKey authkey.AuthKey, logLevel int) (*SessionManager, error) {
+	manager := &SessionManager{
+		connector: connector,
+		authKeyID: authKeyID,
+		destroyed: false,
+		logLevel:  logLevel,
+		authKey:   authKey,
 	}
 	manager.swapping.Store(false) // false is the zero value, but let's set it explicitly
 
@@ -122,7 +144,7 @@ func (s *SessionManager) swapSession() error {
 	s.logInfoMsg("Session locked. Now swapping...")
 
 	s.logDebugMsg("Opening new secure channel...")
-	newSession, err := securechannel.NewSecureChannel(s.connector, s.authKeyID, s.password)
+	newSession, err := securechannel.NewSecureChannel(s.connector, s.authKeyID, s.authKey)
 	if err != nil {
 		s.logErrorMsg(fmt.Sprintf("Failed to open new secure channel: %s\n", err.Error()))
 		return err
