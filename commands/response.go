@@ -128,6 +128,15 @@ type (
 		ObjectID   uint16
 	}
 
+	WrapDataResponse struct {
+		Nonce []byte
+		Data  []byte
+	}
+
+	UnwrapDataResponse struct {
+		Data []byte
+	}
+
 	GetLogsResponse struct {
 		UnloggedBootEvents           uint16
 		UnloggedAuthenticationEvents uint16
@@ -229,6 +238,10 @@ func ParseResponse(data []byte) (Response, error) {
 		return parseExportWrappedResponse(payload)
 	case CommandTypeImportWrapped:
 		return parseImportWrappedResponse(payload)
+	case CommandTypeWrapData:
+		return parseWrapDataResponse(payload)
+	case CommandTypeUnwrapData:
+		return parseUnwrapDataResponse(payload)
 	case CommandTypeGetLogs:
 		return parseGetLogsResponse(payload)
 	case CommandTypeSetLogIndex:
@@ -491,6 +504,27 @@ func parseExportWrappedResponse(payload []byte) (Response, error) {
 	return &ExportWrappedResponse{
 		Nonce: payload[:13],
 		Data:  payload[13:],
+	}, nil
+}
+
+func parseWrapDataResponse(payload []byte) (Response, error) {
+	if len(payload) < 13 {
+		return nil, errors.New("invalid response payload length")
+	}
+
+	return &WrapDataResponse{
+		Nonce: payload[:13],
+		Data:  payload[13:],
+	}, nil
+}
+
+func parseUnwrapDataResponse(payload []byte) (Response, error) {
+	if len(payload) < 1 {
+		return nil, errors.New("invalid response payload length")
+	}
+
+	return &UnwrapDataResponse{
+		Data: payload,
 	}, nil
 }
 

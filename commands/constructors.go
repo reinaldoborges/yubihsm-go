@@ -439,6 +439,36 @@ func CreateExportWrappedCommand(wrapObjID uint16, objType uint8, objID uint16) (
 	return command, nil
 }
 
+func CreateWrapDataCommand(wrapObjID uint16, data []byte) (*CommandMessage, error) {
+	command := &CommandMessage{
+		CommandType: CommandTypeWrapData,
+	}
+
+	payload := bytes.NewBuffer([]byte{})
+	binary.Write(payload, binary.BigEndian, wrapObjID)
+	payload.Write(data)
+	command.Data = payload.Bytes()
+
+	return command, nil
+}
+
+func CreateUnwrapDataCommand(wrapObjID uint16, nonce, data []byte) (*CommandMessage, error) {
+	command := &CommandMessage{
+		CommandType: CommandTypeUnwrapData,
+	}
+	if len(nonce) != 13 {
+		return nil, errors.New("invalid nonce length")
+	}
+
+	payload := bytes.NewBuffer([]byte{})
+	binary.Write(payload, binary.BigEndian, wrapObjID)
+	payload.Write(nonce)
+	payload.Write(data)
+	command.Data = payload.Bytes()
+
+	return command, nil
+}
+
 // CreateImportWrappedCommand will import a wrapped/encrypted Object that was
 // previously exported by an YubiHSM2 device. The imported object will retain
 // its metadata (Object ID, Domains, Capabilities …etc), however, the object’s
