@@ -128,6 +128,15 @@ type (
 		ObjectID   uint16
 	}
 
+	ExportRsaWrappedKeyResponse struct {
+		Data []byte
+	}
+
+	ImportRsaWrappedKeyResponse struct {
+		ObjectType uint8
+		ObjectID   uint16
+	}
+
 	WrapDataResponse struct {
 		Nonce []byte
 		Data  []byte
@@ -238,6 +247,10 @@ func ParseResponse(data []byte) (Response, error) {
 		return parseExportWrappedResponse(payload)
 	case CommandTypeImportWrapped:
 		return parseImportWrappedResponse(payload)
+	case CommandTypeExportRsaWrappedKey:
+		return parseExportRsaWrappedKeyResponse(payload)
+	case CommandTypeImportRsaWrappedKey:
+		return parseImportRsaWrappedKeyResponse(payload)
 	case CommandTypeWrapData:
 		return parseWrapDataResponse(payload)
 	case CommandTypeUnwrapData:
@@ -540,6 +553,33 @@ func parseImportWrappedResponse(payload []byte) (Response, error) {
 	}
 
 	return &ImportWrappedResponse{
+		ObjectType: uint8(payload[0]),
+		ObjectID:   objID,
+	}, nil
+}
+
+func parseExportRsaWrappedKeyResponse(payload []byte) (Response, error) {
+	if len(payload) < 1 {
+		return nil, errors.New("invalid response payload length")
+	}
+
+	return &ExportRsaWrappedKeyResponse{
+		Data: payload,
+	}, nil
+}
+
+func parseImportRsaWrappedKeyResponse(payload []byte) (Response, error) {
+	if len(payload) != 3 {
+		return nil, errors.New("invalid response payload length")
+	}
+
+	var objID uint16
+	err := binary.Read(bytes.NewReader(payload[1:3]), binary.BigEndian, &objID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ImportRsaWrappedKeyResponse{
 		ObjectType: uint8(payload[0]),
 		ObjectID:   objID,
 	}, nil

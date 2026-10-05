@@ -61,6 +61,8 @@ func _() {
 	_ = x[CommandTypeChangeAuthenticationKey-108]
 	_ = x[CommandTypeDecryptAesCbc-113]
 	_ = x[CommandTypeEncryptAesCbc-114]
+	_ = x[CommandTypeExportRsaWrappedKey-116]
+	_ = x[CommandTypeImportRsaWrappedKey-117]
 }
 
 const (
@@ -70,7 +72,8 @@ const (
 	_CommandType_name_3 = "CloseSessionStorageStatusPutOpaqueGetOpaquePutAuthKeyPutAsymmetricGenerateAsymmetricKeySignDataPkcs1ListObjectsDecryptPkcs1ExportWrappedImportWrappedPutWrapKeyGetLogsGetObjectInfoPutOptionGetOptionGetPseudoRandomPutHMACKeyHMACDataGetPubKeySignDataPssSignDataEcdsaDecryptEcdhDeleteObjectDecryptOaepGenerateHMACKeyGenerateWrapKeyVerifyHMAC"
 	_CommandType_name_4 = "OTPDecryptOTPAeadCreateOTPAeadRandomOTPAeadRewrapAttestAsymmetricPutOTPAeadKeyGenerateOTPAeadKeySetLogIndexWrapDataUnwrapDataSignDataEddsaSetBlinkChangeAuthenticationKey"
 	_CommandType_name_5 = "DecryptAesCbcEncryptAesCbc"
-	_CommandType_name_6 = "LogCommandTypeReset"
+	_CommandType_name_6 = "ExportRsaWrappedKeyImportRsaWrappedKey"
+	_CommandType_name_7 = "LogCommandTypeReset"
 )
 
 var (
@@ -79,6 +82,7 @@ var (
 	_CommandType_index_3 = [...]uint16{0, 12, 25, 34, 43, 53, 66, 87, 100, 111, 123, 136, 149, 159, 166, 179, 188, 197, 212, 222, 230, 239, 250, 263, 274, 286, 297, 312, 327, 337}
 	_CommandType_index_4 = [...]uint8{0, 10, 23, 36, 49, 65, 78, 96, 107, 115, 125, 138, 146, 169}
 	_CommandType_index_5 = [...]uint8{0, 13, 26}
+	_CommandType_index_6 = [...]uint8{0, 19, 38}
 )
 
 func (i CommandType) String() string {
@@ -99,8 +103,11 @@ func (i CommandType) String() string {
 	case 113 <= i && i <= 114:
 		i -= 113
 		return _CommandType_name_5[_CommandType_index_5[i]:_CommandType_index_5[i+1]]
+	case 116 <= i && i <= 117:
+		i -= 116
+		return _CommandType_name_6[_CommandType_index_6[i]:_CommandType_index_6[i+1]]
 	case i == 255:
-		return _CommandType_name_6
+		return _CommandType_name_7
 	default:
 		return "CommandType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}

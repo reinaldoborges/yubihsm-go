@@ -65,6 +65,8 @@ const (
 	CommandTypeChangeAuthenticationKey CommandType = 0x6c
 	CommandTypeDecryptAesCbc           CommandType = 0x71
 	CommandTypeEncryptAesCbc           CommandType = 0x72
+	CommandTypeExportRsaWrappedKey     CommandType = 0x74
+	CommandTypeImportRsaWrappedKey     CommandType = 0x75
 
 	// Errors
 	ErrorCodeOK                       ErrorCode = 0x00
@@ -134,6 +136,9 @@ const (
 	AlgorithmECECDSASHA512           Algorithm = 45
 	AlgorithmED25519                 Algorithm = 46
 	AlgorithmECP224                  Algorithm = 47
+	AlgorithmAES128                  Algorithm = 50
+	AlgorithmAES192                  Algorithm = 51
+	AlgorithmAES256                  Algorithm = 52
 	AlgorithmAesCbc                  Algorithm = 54
 
 	// Capabilities
