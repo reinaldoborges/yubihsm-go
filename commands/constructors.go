@@ -490,6 +490,109 @@ func CreateImportWrappedCommand(wrapObjID uint16, nonce, data []byte) (*CommandM
 	return command, nil
 }
 
+// checkRsaWrappedLabelDigest validates the OAEP label digest length against
+// the OAEP hash size, as the device requires (libyubihsm accepts only
+// 20/32/48/64 matching the hash).
+func checkRsaWrappedLabelDigest(oaepAlgorithm Algorithm, labelDigest []byte) error {
+	var size int
+	switch oaepAlgorithm {
+	case AlgorithmRSAOAEPSHA1:
+		size = 20
+	case AlgorithmRSAOAEPSHA256:
+		size = 32
+	case AlgorithmRSAOAEPSHA384:
+		size = 48
+	case AlgorithmRSAOAEPSHA512:
+		size = 64
+	default:
+		return errors.New("unsupported OAEP algorithm")
+	}
+	if len(labelDigest) != size {
+		return errors.New("label digest length does not match OAEP hash size")
+	}
+	return nil
+}
+
+// CreateExportRsaWrappedKeyCommand creates an EXPORT RSA WRAPPED KEY command
+// (0x74): wraps only the key material of objID for an RSA wrap key (the
+// recipient's PUBLIC wrap key), unlike ExportWrapped which wraps the whole
+// object under an AES-CCM wrap key.
+// Payload: wrap key id || object type || object id || ephemeral AES algorithm ||
+// OAEP label-hash algorithm || MGF1 algorithm || OAEP label digest.
+// labelDigest is the digest of the OAEP label for oaepAlgorithm; yubihsm-shell
+// always sends the digest of the empty label (e.g. sha256("")), and blobs are
+// only importable when both sides use the same digest.
+func CreateExportRsaWrappedKeyCommand(wrapObjID uint16, objType uint8, objID uint16, aesAlgorithm, oaepAlgorithm, mgf1Algorithm Algorithm, labelDigest []byte) (*CommandMessage, error) {
+	switch aesAlgorithm {
+	case AlgorithmAES128, AlgorithmAES192, AlgorithmAES256:
+	default:
+		return nil, errors.New("invalid ephemeral AES algorithm")
+	}
+	if err := checkRsaWrappedLabelDigest(oaepAlgorithm, labelDigest); err != nil {
+		return nil, err
+	}
+
+	command := &CommandMessage{
+		CommandType: CommandTypeExportRsaWrappedKey,
+	}
+
+	payload := bytes.NewBuffer([]byte{})
+	binary.Write(payload, binary.BigEndian, wrapObjID)
+	binary.Write(payload, binary.BigEndian, objType)
+	binary.Write(payload, binary.BigEndian, objID)
+	binary.Write(payload, binary.BigEndian, aesAlgorithm)
+	binary.Write(payload, binary.BigEndian, oaepAlgorithm)
+	binary.Write(payload, binary.BigEndian, mgf1Algorithm)
+	payload.Write(labelDigest)
+	command.Data = payload.Bytes()
+
+	return command, nil
+}
+
+// CreateImportRsaWrappedKeyCommand creates an IMPORT RSA WRAPPED KEY command
+// (0x75), the inverse of ExportRsaWrappedKey. The blob carries only key
+// material, so the import re-declares the object (id, label, domains,
+// capabilities, algorithm) — this enables cross-domain moves and dropping
+// exportable-under-wrap on the imported copy. The AES size is recovered from
+// the blob; oaepAlgorithm, mgf1Algorithm and labelDigest must match the export.
+// Payload: wrap key id || object type || object id || label || domains ||
+// capabilities || key algorithm || OAEP algorithm || MGF1 algorithm ||
+// wrapped key material || OAEP label digest.
+func CreateImportRsaWrappedKeyCommand(wrapObjID uint16, objType uint8, objID uint16, label []byte, domains uint16, capabilities uint64, keyAlgorithm, oaepAlgorithm, mgf1Algorithm Algorithm, wrappedKey, labelDigest []byte) (*CommandMessage, error) {
+	if len(label) > LabelLength {
+		return nil, errors.New("label is too long")
+	}
+	if len(label) < LabelLength {
+		label = append(label, bytes.Repeat([]byte{0x00}, LabelLength-len(label))...)
+	}
+	if len(wrappedKey) == 0 {
+		return nil, errors.New("wrapped key material is empty")
+	}
+	if err := checkRsaWrappedLabelDigest(oaepAlgorithm, labelDigest); err != nil {
+		return nil, err
+	}
+
+	command := &CommandMessage{
+		CommandType: CommandTypeImportRsaWrappedKey,
+	}
+
+	payload := bytes.NewBuffer([]byte{})
+	binary.Write(payload, binary.BigEndian, wrapObjID)
+	binary.Write(payload, binary.BigEndian, objType)
+	binary.Write(payload, binary.BigEndian, objID)
+	payload.Write(label)
+	binary.Write(payload, binary.BigEndian, domains)
+	binary.Write(payload, binary.BigEndian, capabilities)
+	binary.Write(payload, binary.BigEndian, keyAlgorithm)
+	binary.Write(payload, binary.BigEndian, oaepAlgorithm)
+	binary.Write(payload, binary.BigEndian, mgf1Algorithm)
+	payload.Write(wrappedKey)
+	payload.Write(labelDigest)
+	command.Data = payload.Bytes()
+
+	return command, nil
+}
+
 func CreateGetLogsCommand() *CommandMessage {
 	command := &CommandMessage{
 		CommandType: CommandTypeGetLogs,
